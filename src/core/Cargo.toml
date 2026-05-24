@@ -1,0 +1,31 @@
+[package]
+name = "detaxine-charts"
+version = "0.1.0"
+edition = "2024"
+description = "A charts library for Leptos"
+license = "MIT"                                   # required for crates.io
+repository = "https://github.com/you/my-charts"
+homepage = "https://github.com/you/my-charts"
+documentation = "https://docs.rs/leptos-charts"
+readme = "README.md"
+keywords = ["leptos", "charts", "wasm"]
+categories = ["web-programming", "visualization"]
+
+[features]
+default = ["BarChart"]
+BarChart = []
+PieChart = []
+LineCurveChart = []
+DoughnutChart = []
+
+[dependencies]
+leptos = { workspace = true }
+web-sys = { workspace = true }
+gloo = { workspace = true }
+rand = { workspace = true }
+
+[dev-dependencies]
+wasm-bindgen-test = { workspace = true }
+
+[package.metadata.docs.rs]
+no-deps = true
