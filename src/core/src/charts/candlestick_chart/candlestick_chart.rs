@@ -162,13 +162,9 @@ pub fn CandlestickChart(
         let mouse_ratio = ((x - axis_padding) / chart_width).clamp(0.0, 1.0);
         let center = start + (mouse_ratio * visible as f64) as usize;
 
-        // smooth zoom step — 10% of visible range per scroll tick
-        let delta = (visible as f64 * 0.005).round().max(1.0) as usize;
-        let new_visible = if e.delta_y() < 0.0 {
-            (visible.saturating_sub(delta)).max(5)
-        } else {
-            (visible + delta).min(total)
-        };
+        // delta_y can be large on trackpads, normalise it
+        let delta_y = e.delta_y().signum() as isize;
+        let new_visible = ((visible as isize + delta_y).max(2) as usize).min(total);
 
         let new_start = center.saturating_sub((mouse_ratio * new_visible as f64) as usize);
         let new_end = (new_start + new_visible).min(total);
@@ -313,7 +309,7 @@ fn draw_candlestick_chart(
     };
 
     let axis_padding = 60.0;
-    let candle_margin = 0.7;
+    let candle_margin = 0.2;
 
     let max_value = data
         .iter()
@@ -330,7 +326,7 @@ fn draw_candlestick_chart(
     let chart_width = width - axis_padding * 2.0;
     let chart_height = height - axis_padding * 2.0;
     let slot_width = chart_width / data.len() as f64;
-    let candle_width = slot_width * (1.0 - candle_margin);
+    let candle_width = (slot_width * (1.0 - candle_margin)).max(0.5);
 
     let to_y = |value: f64| -> f64 {
         height - axis_padding - ((value - min_value) / value_range) * chart_height
@@ -390,7 +386,7 @@ fn draw_candlestick_chart(
 
         // upper wick
         context.set_stroke_style_str(props.config.wick_color.as_str());
-        context.set_line_width(1.5);
+        context.set_line_width(1.0_f64.min(candle_width));
         context.begin_path();
         context.move_to(wick_x, to_y(candle.high));
         context.line_to(wick_x, body_top);
@@ -402,23 +398,30 @@ fn draw_candlestick_chart(
         context.line_to(wick_x, to_y(candle.low));
         context.stroke();
 
-        // body
-        context.set_fill_style_str(color);
-        context.fill_rect(candle_x, body_top, candle_width, body_height);
-        context.set_stroke_style_str(color);
-        context.set_line_width(1.0);
-        context.stroke_rect(candle_x, body_top, candle_width, body_height);
+        // body — degrade to a line when candles are very thin
+        if candle_width < 2.0 {
+            context.set_stroke_style_str(color);
+            context.set_line_width(candle_width);
+            context.begin_path();
+            context.move_to(wick_x, body_top);
+            context.line_to(wick_x, body_bottom);
+            context.stroke();
+        } else {
+            context.set_fill_style_str(color);
+            context.fill_rect(candle_x, body_top, candle_width, body_height);
+            context.set_stroke_style_str(color);
+            context.set_line_width(1.0);
+            context.stroke_rect(candle_x, body_top, candle_width, body_height);
+        }
 
-        // x-axis label — only render if candles are wide enough to avoid overlap
-        if slot_width > 8.0 {
+        // x-axis labels — slanted, hidden when too dense
+        if slot_width > 30.0 {
             context.set_fill_style_str("black");
             context.set_text_align("right");
             context.set_text_baseline("middle");
             context.save();
-            context
-                .translate(wick_x, height - axis_padding / 2.0)
-                .unwrap_or(());
-            context.rotate(-std::f64::consts::PI / 4.0).unwrap_or(());
+            let _ = context.translate(wick_x, height - axis_padding / 2.0);
+            let _ = context.rotate(-std::f64::consts::PI / 4.0);
             let _ = context.fill_text(&candle.label, 0.0, 0.0);
             context.restore();
         }
