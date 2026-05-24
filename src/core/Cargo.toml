@@ -12,11 +12,18 @@ keywords = ["leptos", "charts", "wasm"]
 categories = ["web-programming", "visualization"]
 
 [features]
-default = ["BarChart"]
+default = [
+    "BarChart",
+    "PieChart",
+    "DoughnutChart",
+    "LineCurveChart",
+    "CandlestickChart",
+]
 BarChart = []
 PieChart = []
-LineCurveChart = []
 DoughnutChart = []
+LineCurveChart = []
+CandlestickChart = []
 
 [dependencies]
 leptos = { workspace = true }
