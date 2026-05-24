@@ -206,7 +206,7 @@ pub fn LineCurveChart(
     });
 
     view! {
-        <div style="width: 90%;">
+        <div style="width: 100%;">
             <div style="display: flex; flex-direction: row; gap: 5px; flex-wrap: wrap; margin-bottom: 4px;">
             </div>
             <div style="position: relative;">
@@ -374,13 +374,16 @@ fn draw_multiline_chart(
     // Draw x-axis labels
     if props.config.show_x_axis_labels {
         context.set_fill_style_str("black");
-        context.set_text_align("center");
+        context.set_text_align("right");
         context.set_text_baseline("middle");
-
         for (i, x_label) in props.x.iter().enumerate() {
             let x = axis_padding + i as f64 * point_spacing;
             let y = height - axis_padding / 2.0;
-            let _ = context.fill_text(x_label.as_str(), x, y);
+            context.save();
+            let _ = context.translate(x, y);
+            let _ = context.rotate(-std::f64::consts::PI / 4.0);
+            let _ = context.fill_text(x_label.as_str(), 0.0, 0.0);
+            context.restore();
         }
     }
 

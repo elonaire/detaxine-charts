@@ -172,7 +172,7 @@ pub fn DoughnutChart(
     });
 
     view! {
-        <div style="width: 90%;">
+        <div style="width: 100%;">
             {move || show_legend.then(|| view! {
                 <div style="display: flex; flex-direction: row; gap: 5px; flex-wrap: wrap; margin-bottom: 4px;">
                     {legend_meta.get_value().into_iter().map(|(label, color)| view! {

@@ -180,7 +180,7 @@ pub fn BarChart(
     });
 
     view! {
-        <div style="position: relative; width: 90%;">
+        <div style="position: relative; width: 100%;">
             <canvas node_ref=canvas_ref style="width: 100%; height: 100%;"></canvas>
             <div
                 node_ref=tooltip_ref
@@ -262,12 +262,16 @@ fn draw_bar_chart(
     }
 
     context.set_fill_style_str("black");
-    context.set_text_align("center");
+    context.set_text_align("right");
     context.set_text_baseline("middle");
     for (i, point) in props.data.iter().enumerate() {
         let x = axis_padding + i as f64 * (bar_width + bar_spacing) + bar_width / 2.0;
         let y = height - axis_padding / 2.0;
-        let _ = context.fill_text(&point.name, x, y);
+        context.save();
+        let _ = context.translate(x, y);
+        let _ = context.rotate(-std::f64::consts::PI / 4.0);
+        let _ = context.fill_text(&point.name, 0.0, 0.0);
+        context.restore();
     }
 
     bar_rects
