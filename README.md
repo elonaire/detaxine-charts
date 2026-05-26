@@ -26,13 +26,17 @@ This crate is built using the [Leptos](https://leptos.dev) framework and uses HT
 - [x] LineCurveChart
 - [x] CandlestickChart (with zoom & pan)
 
+## Live Demo
+
+[https://elonaire.github.io/detaxine-charts/](https://elonaire.github.io/detaxine-charts/)
+
 ## Usage
 
 Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-detaxine-charts = { version = "0.1.0", features = ["BarChart", "PieChart"] }
+detaxine-charts = { version = "0.8.22", features = ["BarChart", "PieChart"] }
 ```
 
 Available features: `BarChart`, `PieChart`, `DoughnutChart`, `LineCurveChart`, `CandlestickChart`.
@@ -115,11 +119,11 @@ fn LiveChart() -> impl IntoView {
 | `append(item)` | Append a single item |
 | `extend(items)` | Append multiple items |
 | `update_at(index, item)` | Replace the item at the given index |
-| `update_last(item)` | Update the last item — ideal for live candle tick updates |
+| `update_last(item)` | Update the last item - ideal for live candle tick updates |
 | `set(items)` | Replace all data at once |
 | `remove_at(index)` | Remove the item at the given index |
 | `clear()` | Remove all items |
-| `retain_last(n)` | Keep only the last `n` items — prevents unbounded memory growth |
+| `retain_last(n)` | Keep only the last `n` items - prevents unbounded memory growth |
 | `len()` | Returns the current number of items |
 | `is_empty()` | Returns true if there are no items |
 | `get_untracked()` | Read current data without tracking reactivity |
@@ -145,21 +149,21 @@ trunk serve --example dashboard
 Then open [http://localhost:8080](http://localhost:8080) in your browser.
 
 The dashboard includes:
-- **Candlestick Chart** — zoomable/pannable candlestick chart (scroll to zoom, drag to pan)
+- **Candlestick Chart** - zoomable/pannable candlestick chart (scroll to zoom, drag to pan)
 - **Candlestick Chart - Live Data** — zoomable/pannable candlestick chart (scroll to zoom, drag to pan) with live data streaming
-- **Bar Chart** — bar chart with responsive full-width bars
-- **Line Chart** — multi-series line chart with area fill
-- **Pie Chart** — pie chart with hover tooltips
-- **Doughnut Chart** — doughnut chart with hover tooltips
+- **Bar Chart** - bar chart with responsive full-width bars
+- **Line Chart** - multi-series line chart with area fill
+- **Pie Chart** - pie chart with hover tooltips
+- **Doughnut Chart** - doughnut chart with hover tooltips
 
 ## Design Notes
 
-- **Canvas-based rendering** — all charts draw to an HTML5 `<canvas>` element via `web_sys`, giving full control over pixel output with no DOM overhead
-- **Device pixel ratio aware** — canvases are scaled by `window.devicePixelRatio` so charts are sharp on HiDPI and Retina displays
+- **Canvas-based rendering** - all charts draw to an HTML5 `<canvas>` element via `web_sys`, giving full control over pixel output with no DOM overhead
+- **Device pixel ratio aware** - canvases are scaled by `window.devicePixelRatio` so charts are sharp on HiDPI and Retina displays
 - **Responsive** — each chart listens for `window.resize` and redraws to fit its parent container width automatically
-- **HTML tooltip overlay** — tooltips are absolutely positioned `<div>` elements rather than canvas-drawn text, making them easy to style with CSS
-- **Geometry-driven hit testing** — after each draw, shape positions are stored and used for precise mouse hit detection on hover
-- **Fine-grained reactivity** — built on Leptos signals so only the chart whose data changes redraws, never the whole page
+- **HTML tooltip overlay** - tooltips are absolutely positioned `<div>` elements rather than canvas-drawn text, making them easy to style with CSS
+- **Geometry-driven hit testing** - after each draw, shape positions are stored and used for precise mouse hit detection on hover
+- **Fine-grained reactivity** - built on Leptos signals so only the chart whose data changes redraws, never the whole page
 
 ## Versioning
 

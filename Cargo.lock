@@ -305,7 +305,7 @@ dependencies = [
 
 [[package]]
 name = "detaxine-charts"
-version = "0.8.21"
+version = "0.8.22"
 dependencies = [
  "gloo",
  "leptos",
