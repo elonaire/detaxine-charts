@@ -92,8 +92,10 @@ fn LiveChart() -> impl IntoView {
     }, Duration::from_secs(60));
 
     on_cleanup(move || {
-        if let Ok(h) = tick_handle   { h.clear() };
-        if let Ok(h) = candle_handle { h.clear() };
+        if let (Ok(tick_handler), Ok(candle_handler)) = (tick_handle, candle_handle)   {
+            tick_handler.clear();
+            candle_handler.clear();
+        };
     });
 
     view! {
