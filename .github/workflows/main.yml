@@ -51,7 +51,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: csrc/core/dist
+          publish_dir: src/core/dist
 
   publish:
     needs: [tests]
