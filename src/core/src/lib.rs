@@ -14,20 +14,25 @@
 //! | [`LineCurveChart`] | Multi-series line chart with optional bezier curves and area fill |
 //! | [`CandlestickChart`] | OHLC candlestick chart with zoom and pan |
 //!
+//!
+//! ## Live Demo
+//!
+//! [https://elonaire.github.io/detaxine-charts/](https://elonaire.github.io/detaxine-charts/)
+//!
 //! ## Usage
 //!
 //! Add the crate to your `Cargo.toml`:
 //!
 //! ```toml
 //! [dependencies]
-//! detaxine-charts = "0.7.0"
+//! detaxine-charts = "0.8.22"
 //! ```
 //!
 //! Each chart is behind a feature flag so you only compile what you need:
 //!
 //! ```toml
 //! [dependencies]
-//! detaxine-charts = { version = "0.7.0", features = ["BarChart", "LineCurveChart"] }
+//! detaxine-charts = { version = "0.8.22", features = ["BarChart", "LineCurveChart"] }
 //! ```
 //!
 //! Available features: `BarChart`, `PieChart`, `DoughnutChart`, `LineCurveChart`, `CandlestickChart`.
@@ -197,15 +202,15 @@
 //!
 //! ## Design Notes
 //!
-//! - **Canvas-based rendering** — all charts draw to an HTML5 `<canvas>` element
+//! - **Canvas-based rendering** - all charts draw to an HTML5 `<canvas>` element
 //!   via `web_sys`, giving full control over pixel output with no DOM overhead.
-//! - **Device pixel ratio aware** — canvases are scaled by `window.devicePixelRatio`
+//! - **Device pixel ratio aware** - canvases are scaled by `window.devicePixelRatio`
 //!   so charts are sharp on HiDPI and Retina displays.
-//! - **Responsive** — each chart listens for `window.resize` and redraws to fit
+//! - **Responsive** - each chart listens for `window.resize` and redraws to fit
 //!   its parent container width automatically.
-//! - **HTML tooltip overlay** — tooltips are absolutely positioned `<div>` elements
+//! - **HTML tooltip overlay** - tooltips are absolutely positioned `<div>` elements
 //!   rather than canvas-drawn text, making them easy to style with CSS.
-//! - **Geometry-driven hit testing** — after each draw, shape positions are stored
+//! - **Geometry-driven hit testing** - after each draw, shape positions are stored
 //!   in a [`StoredValue`](leptos::StoredValue) and used for precise mouse hit
 //!   detection on hover.
 
