@@ -57,58 +57,25 @@ fn get_context(canvas: &HtmlCanvasElement) -> Option<CanvasRenderingContext2d> {
 
 #[component]
 pub fn PieChart(
-    data: Vec<DataPoint>,
+    /// Reactive signal — update data and the chart redraws automatically.
+    data: Signal<Vec<DataPoint>>,
     #[prop(optional, default = Default::default())] config: PieChartConfig,
 ) -> impl IntoView {
     let canvas_ref = NodeRef::<Canvas>::new();
     let tooltip_ref = NodeRef::<Div>::new();
     let slice_positions = StoredValue::new(Vec::<SlicePos>::new());
-    let show_legend = config.show_legend;
-    let legend_meta = StoredValue::new(
-        data.iter()
+    let config = StoredValue::new(config);
+
+    let legend_meta = Memo::new(move |_| {
+        data.get()
+            .iter()
             .map(|d| (d.name.clone(), d.color.clone()))
-            .collect::<Vec<_>>(),
-    );
+            .collect::<Vec<_>>()
+    });
 
-    let data = data.clone();
-    let config = config.clone();
+    let show_legend = move || config.get_value().show_legend;
 
-    let draw = StoredValue::new(
-        move |canvas: &HtmlCanvasElement, context: &CanvasRenderingContext2d| {
-            let canvas = canvas.clone();
-            let context = context.clone();
-            let data = data.clone();
-            let config = config.clone();
-            move || {
-                let Some(win) = window() else { return };
-                let device_pixel_ratio = win.device_pixel_ratio();
-                let Some(parent) = canvas.parent_element() else {
-                    return;
-                };
-                let width = parent.client_width() as f64;
-                let height = width * 0.8;
-
-                canvas.set_width((width * device_pixel_ratio) as u32);
-                canvas.set_height((height * device_pixel_ratio) as u32);
-
-                if context.reset_transform().is_err() {
-                    return;
-                };
-                if context
-                    .scale(device_pixel_ratio, device_pixel_ratio)
-                    .is_err()
-                {
-                    return;
-                };
-
-                let props = PieChartProps { data, config };
-                let slices = draw_pie_chart(&context, width, height, &props);
-                slice_positions.set_value(slices);
-            }
-        },
-    );
-
-    Effect::new(move |_| {
+    let redraw = move || {
         let Some(canvas) = canvas_ref.get() else {
             return;
         };
@@ -116,23 +83,42 @@ pub fn PieChart(
         let Some(context) = get_context(&canvas) else {
             return;
         };
+        let Some(win) = window() else { return };
 
-        draw.get_value()(&canvas, &context)();
+        let device_pixel_ratio = win.device_pixel_ratio();
+        let Some(parent) = canvas.parent_element() else {
+            return;
+        };
+        let width = parent.client_width() as f64;
+        let height = width * 0.8;
+
+        canvas.set_width((width * device_pixel_ratio) as u32);
+        canvas.set_height((height * device_pixel_ratio) as u32);
+
+        if context.reset_transform().is_err() {
+            return;
+        };
+        if context
+            .scale(device_pixel_ratio, device_pixel_ratio)
+            .is_err()
+        {
+            return;
+        };
+
+        let slices = draw_pie_chart(&context, width, height, &data.get_untracked());
+        slice_positions.set_value(slices);
+    };
+
+    Effect::new(move |_| {
+        let _ = data.get(); // tracked
+        redraw();
     });
 
     let resize_listener = window_event_listener(ev::resize, move |_| {
-        let Some(canvas) = canvas_ref.get() else {
-            return;
-        };
-        let canvas: HtmlCanvasElement = canvas.into();
-        let Some(context) = get_context(&canvas) else {
-            return;
-        };
-
-        draw.get_value()(&canvas, &context)();
+        redraw();
     });
 
-    let mousemove_listener = window_event_listener(ev::mousemove, move |e| {
+    let canvas_mousemove_handler = move |e: ev::MouseEvent| {
         let Some(canvas) = canvas_ref.get() else {
             return;
         };
@@ -179,18 +165,17 @@ pub fn PieChart(
         } else {
             let _ = style.set_property("display", "none");
         }
-    });
+    };
 
     on_cleanup(move || {
         resize_listener.remove();
-        mousemove_listener.remove();
     });
 
     view! {
         <div style="width: 100%;">
-            {move || show_legend.then(|| view! {
+            {move || show_legend().then(|| view! {
                 <div style="display: flex; flex-direction: row; gap: 5px; flex-wrap: wrap; margin-bottom: 4px;">
-                    {legend_meta.get_value().into_iter().map(|(name, color)| view! {
+                    {legend_meta.get().into_iter().map(|(name, color)| view! {
                         <div style="display: flex; flex-direction: row; align-items: center; gap: 2px;">
                             <span style="font-size: 10px;">{name}</span>
                             <div style=format!("background-color: {}; width: 10px; height: 10px; display: inline-block;", color)></div>
@@ -199,7 +184,11 @@ pub fn PieChart(
                 </div>
             })}
             <div style="position: relative;">
-                <canvas node_ref=canvas_ref style="width: 100%; height: 100%;"></canvas>
+                <canvas
+                    node_ref=canvas_ref
+                    style="width: 100%; height: 100%;"
+                    on:mousemove=canvas_mousemove_handler
+                ></canvas>
                 <div
                     node_ref=tooltip_ref
                     style="
@@ -222,13 +211,13 @@ fn draw_pie_chart(
     context: &CanvasRenderingContext2d,
     width: f64,
     height: f64,
-    props: &PieChartProps,
+    data: &[DataPoint],
 ) -> Vec<SlicePos> {
     let center_x = width / 2.0;
     let center_y = height / 2.0;
     let radius = (width.min(height) / 2.0) - 5.0;
 
-    let total: f64 = props.data.iter().map(|d| d.value as f64).sum();
+    let total: f64 = data.iter().map(|d| d.value as f64).sum();
     if total == 0.0 {
         return vec![];
     };
@@ -238,15 +227,15 @@ fn draw_pie_chart(
     let mut start_angle = 0.0_f64;
     let mut slice_positions = Vec::new();
 
-    for data_point in &props.data {
-        let slice_angle = data_point.value as f64 / total * 2.0 * PI;
+    for point in data {
+        let slice_angle = point.value as f64 / total * 2.0 * PI;
         let end_angle = start_angle + slice_angle;
 
         context.begin_path();
         context.move_to(center_x, center_y);
         let _ = context.arc(center_x, center_y, radius, start_angle, end_angle);
         context.close_path();
-        context.set_fill_style_str(data_point.color.as_str());
+        context.set_fill_style_str(point.color.as_str());
         context.fill();
 
         slice_positions.push(SlicePos {
@@ -255,8 +244,8 @@ fn draw_pie_chart(
             radius,
             center_x,
             center_y,
-            name: data_point.name.clone(),
-            value: data_point.value,
+            name: point.name.clone(),
+            value: point.value,
         });
 
         start_angle = end_angle;
@@ -288,16 +277,13 @@ mod tests {
             return;
         };
 
-        let props = PieChartProps {
-            data: vec![
-                DataPoint::new("A", 10, "#ff0000"),
-                DataPoint::new("B", 20, "#00ff00"),
-                DataPoint::new("C", 30, "#0000ff"),
-                DataPoint::new("D", 40, "#ffff00"),
-            ],
-            config: PieChartConfig::default(),
-        };
+        let data = vec![
+            DataPoint::new("A", 10, "#ff0000"),
+            DataPoint::new("B", 20, "#00ff00"),
+            DataPoint::new("C", 30, "#0000ff"),
+            DataPoint::new("D", 40, "#ffff00"),
+        ];
 
-        draw_pie_chart(&context, 800.0, 600.0, &props);
+        draw_pie_chart(&context, 800.0, 600.0, &data);
     }
 }

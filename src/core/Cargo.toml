@@ -1,14 +1,22 @@
 [package]
 name = "detaxine-charts"
-version = "0.1.0"
+version = "0.8.19"
 edition = "2024"
-description = "A charts library for Leptos"
-license = "MIT"                                   # required for crates.io
-repository = "https://github.com/you/my-charts"
+description = "A data visualization library for Leptos"
+license = "MIT OR Apache-2.0"
+license-file = "LICENSE-APACHE" # required for crates.io
+repository = "https://github.com/elonaire/detaxine-charts"
 homepage = "https://github.com/you/my-charts"
-documentation = "https://docs.rs/leptos-charts"
+documentation = "https://docs.rs/detaxine-charts"
 readme = "README.md"
-keywords = ["leptos", "charts", "wasm"]
+keywords = [
+    "leptos",
+    "charts",
+    "wasm",
+    "visualization",
+    "data",
+    "visualisation",
+]
 categories = ["web-programming", "visualization"]
 
 [features]

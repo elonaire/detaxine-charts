@@ -1,5 +1,6 @@
-use detaxine_charts::charts::line_chart::line_chart::{
-    DataPoint, LineCurveChart, LineCurveChartConfig, Series,
+use detaxine_charts::{
+    charts::line_chart::line_chart::{DataPoint, LineCurveChart, LineCurveChartConfig, Series},
+    use_chart_data,
 };
 use leptos::prelude::*;
 
@@ -7,7 +8,7 @@ fn main() {
     mount_to_body(|| {
         view! {
             <LineCurveChart
-                data=vec![
+                data=use_chart_data(vec![
                     (
                         Series::new("Revenue", "#4f46e5"),
                         vec![
@@ -30,15 +31,15 @@ fn main() {
                             DataPoint::new(100),
                         ],
                     ),
-                ]
-                x=vec![
+                ]).signal()
+                x=use_chart_data(vec![
                     "Jan".to_string(),
                     "Feb".to_string(),
                     "Mar".to_string(),
                     "Apr".to_string(),
                     "May".to_string(),
                     "Jun".to_string(),
-                ]
+                ]).signal()
                 config=LineCurveChartConfig {
                     show_area_chart: true,
                     x_axis_title: "Month".to_string(),

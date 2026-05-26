@@ -73,6 +73,7 @@ struct PointPos {
     label: String,
     value: i32,
     series_name: String,
+    series_color: String,
 }
 
 fn get_context(canvas: &HtmlCanvasElement) -> Option<CanvasRenderingContext2d> {
@@ -85,55 +86,27 @@ fn get_context(canvas: &HtmlCanvasElement) -> Option<CanvasRenderingContext2d> {
 
 #[component]
 pub fn LineCurveChart(
-    data: Vec<(Series, Vec<DataPoint>)>,
-    x: Vec<String>,
+    /// Reactive signal — update data and the chart redraws automatically.
+    data: Signal<Vec<(Series, Vec<DataPoint>)>>,
+    /// Reactive signal — update x labels and the chart redraws automatically.
+    x: Signal<Vec<String>>,
     #[prop(optional, default = Default::default())] config: LineCurveChartConfig,
 ) -> impl IntoView {
     let canvas_ref = NodeRef::<Canvas>::new();
     let tooltip_ref = NodeRef::<Div>::new();
     let point_positions = StoredValue::new(Vec::<PointPos>::new());
+    let config = StoredValue::new(config);
 
-    let data = data.clone();
-    let x = x.clone();
-    let config = config.clone();
+    let series_meta = Memo::new(move |_| {
+        data.get()
+            .iter()
+            .map(|(s, _)| (s.name.clone(), s.color.clone()))
+            .collect::<Vec<_>>()
+    });
 
-    let draw = StoredValue::new(
-        move |canvas: &HtmlCanvasElement, context: &CanvasRenderingContext2d| {
-            let canvas = canvas.clone();
-            let context = context.clone();
-            let data = data.clone();
-            let x = x.clone();
-            let config = config.clone();
-            move || {
-                let Some(win) = window() else { return };
-                let device_pixel_ratio = win.device_pixel_ratio();
-                let Some(parent) = canvas.parent_element() else {
-                    return;
-                };
-                let width = parent.client_width() as f64;
-                let height = width * 0.6;
+    let show_legend = move || config.get_value().show_legend;
 
-                canvas.set_width((width * device_pixel_ratio) as u32);
-                canvas.set_height((height * device_pixel_ratio) as u32);
-
-                if context.reset_transform().is_err() {
-                    return;
-                };
-                if context
-                    .scale(device_pixel_ratio, device_pixel_ratio)
-                    .is_err()
-                {
-                    return;
-                };
-
-                let props = LineCurveChartProps { data, x, config };
-                let positions = draw_multiline_chart(&context, width, height, &props);
-                point_positions.set_value(positions);
-            }
-        },
-    );
-
-    Effect::new(move |_| {
+    let redraw = move || {
         let Some(canvas) = canvas_ref.get() else {
             return;
         };
@@ -141,23 +114,51 @@ pub fn LineCurveChart(
         let Some(context) = get_context(&canvas) else {
             return;
         };
+        let Some(win) = window() else { return };
 
-        draw.get_value()(&canvas, &context)();
+        let device_pixel_ratio = win.device_pixel_ratio();
+        let Some(parent) = canvas.parent_element() else {
+            return;
+        };
+        let width = parent.client_width() as f64;
+        let height = width * 0.6;
+
+        canvas.set_width((width * device_pixel_ratio) as u32);
+        canvas.set_height((height * device_pixel_ratio) as u32);
+
+        if context.reset_transform().is_err() {
+            return;
+        };
+        if context
+            .scale(device_pixel_ratio, device_pixel_ratio)
+            .is_err()
+        {
+            return;
+        };
+
+        let positions = draw_multiline_chart(
+            &context,
+            width,
+            height,
+            &data.get_untracked(),
+            &x.get_untracked(),
+            &config.get_value(),
+        );
+        point_positions.set_value(positions);
+    };
+
+    // effect — redraw when data or x labels change
+    Effect::new(move |_| {
+        let _ = data.get(); // tracked
+        let _ = x.get(); // tracked
+        redraw();
     });
 
     let resize_listener = window_event_listener(ev::resize, move |_| {
-        let Some(canvas) = canvas_ref.get() else {
-            return;
-        };
-        let canvas: HtmlCanvasElement = canvas.into();
-        let Some(context) = get_context(&canvas) else {
-            return;
-        };
-
-        draw.get_value()(&canvas, &context)();
+        redraw();
     });
 
-    let mousemove_listener = window_event_listener(ev::mousemove, move |e| {
+    let canvas_mousemove_handler = move |e: ev::MouseEvent| {
         let Some(canvas) = canvas_ref.get() else {
             return;
         };
@@ -177,7 +178,6 @@ pub fn LineCurveChart(
         let lx = x * scale_x;
         let ly = y * scale_y;
 
-        // hit radius in logical pixels
         let hit_radius = 8.0;
         let hovered = point_positions.get_value().into_iter().find(|p| {
             let dx = lx - p.x;
@@ -198,19 +198,30 @@ pub fn LineCurveChart(
         } else {
             let _ = style.set_property("display", "none");
         }
-    });
+    };
 
     on_cleanup(move || {
         resize_listener.remove();
-        mousemove_listener.remove();
     });
 
     view! {
         <div style="width: 100%;">
-            <div style="display: flex; flex-direction: row; gap: 5px; flex-wrap: wrap; margin-bottom: 4px;">
-            </div>
+            {move || show_legend().then(|| view! {
+                <div style="display: flex; flex-direction: row; gap: 5px; flex-wrap: wrap; margin-bottom: 4px;">
+                    {series_meta.get().into_iter().map(|(name, color)| view! {
+                        <div style="display: flex; flex-direction: row; align-items: center; gap: 2px;">
+                            <span style="font-size: 10px;">{name}</span>
+                            <div style=format!("background-color: {}; width: 10px; height: 10px; display: inline-block;", color)></div>
+                        </div>
+                    }).collect_view()}
+                </div>
+            })}
             <div style="position: relative;">
-                <canvas node_ref=canvas_ref style="width: 100%; height: 100%;"></canvas>
+                <canvas
+                    node_ref=canvas_ref
+                    style="width: 100%; height: 100%;"
+                    on:mousemove=canvas_mousemove_handler
+                ></canvas>
                 <div
                     node_ref=tooltip_ref
                     style="
@@ -233,19 +244,20 @@ fn draw_multiline_chart(
     context: &CanvasRenderingContext2d,
     width: f64,
     height: f64,
-    props: &LineCurveChartProps,
+    data: &[(Series, Vec<DataPoint>)],
+    x_labels: &[String],
+    config: &LineCurveChartConfig,
 ) -> Vec<PointPos> {
-    let datasets = &props.data;
     let axis_padding = 50.0;
 
-    let max_value = datasets
+    let max_value = data
         .iter()
-        .flat_map(|(_, data)| data.iter().map(|d| d.y))
+        .flat_map(|(_, points)| points.iter().map(|d| d.y))
         .max()
         .unwrap_or(0) as f64
         * 1.2;
 
-    let Some(first) = datasets.first() else {
+    let Some(first) = data.first() else {
         return vec![];
     };
     let num_points = first.1.len() as f64;
@@ -256,8 +268,7 @@ fn draw_multiline_chart(
 
     context.clear_rect(0.0, 0.0, width, height);
 
-    // Draw x-axis
-    if props.config.show_x_axis {
+    if config.show_x_axis {
         context.set_stroke_style_str("#cccccc");
         context.set_line_width(1.0);
         context.begin_path();
@@ -266,8 +277,7 @@ fn draw_multiline_chart(
         context.stroke();
     }
 
-    // Draw y-axis
-    if props.config.show_y_axis {
+    if config.show_y_axis {
         context.set_stroke_style_str("#cccccc");
         context.set_line_width(1.0);
         context.begin_path();
@@ -276,7 +286,6 @@ fn draw_multiline_chart(
         context.stroke();
     }
 
-    // Draw y-axis grid lines and labels
     let num_grid_lines = 5;
     let step_value = max_value / num_grid_lines as f64;
     let step_height = (height - axis_padding * 2.0) / num_grid_lines as f64;
@@ -290,14 +299,14 @@ fn draw_multiline_chart(
     for i in 0..=num_grid_lines {
         let y = height - axis_padding - i as f64 * step_height;
 
-        if props.config.show_grid {
+        if config.show_grid {
             context.begin_path();
             context.move_to(axis_padding, y);
             context.line_to(width, y);
             context.stroke();
         }
 
-        if props.config.show_y_axis_labels {
+        if config.show_y_axis_labels {
             let label = (i as f64 * step_value).round();
             let _ = context.fill_text(&format!("{}", label), axis_padding - 10.0, y);
         }
@@ -305,25 +314,26 @@ fn draw_multiline_chart(
 
     let mut point_positions = Vec::new();
 
-    for (series, data) in datasets {
+    for (series, points) in data {
         context.set_stroke_style_str(series.color.as_str());
-        context.set_line_width(props.config.stroke_width);
+        context.set_line_width(config.stroke_width);
 
         context.begin_path();
-        let first_y =
-            height - axis_padding - (data[0].y as f64 / max_value) * (height - axis_padding * 2.0);
+        let first_y = height
+            - axis_padding
+            - (points[0].y as f64 / max_value) * (height - axis_padding * 2.0);
         context.move_to(axis_padding, first_y);
 
-        for i in 1..data.len() {
+        for i in 1..points.len() {
             let x = axis_padding + i as f64 * point_spacing;
             let y = height
                 - axis_padding
-                - (data[i].y as f64 / max_value) * (height - axis_padding * 2.0);
+                - (points[i].y as f64 / max_value) * (height - axis_padding * 2.0);
 
             let prev_x = axis_padding + (i - 1) as f64 * point_spacing;
             let prev_y = height
                 - axis_padding
-                - (data[i - 1].y as f64 / max_value) * (height - axis_padding * 2.0);
+                - (points[i - 1].y as f64 / max_value) * (height - axis_padding * 2.0);
 
             let ctrl1_x = prev_x + point_spacing / 3.0;
             let ctrl1_y = prev_y;
@@ -334,10 +344,9 @@ fn draw_multiline_chart(
         }
         context.stroke();
 
-        // Fill area below line
-        if props.config.show_area_chart {
+        if config.show_area_chart {
             context.line_to(
-                axis_padding + (data.len() as f64 - 1.0) * point_spacing,
+                axis_padding + (points.len() as f64 - 1.0) * point_spacing,
                 height - axis_padding,
             );
             context.line_to(axis_padding, height - axis_padding);
@@ -347,14 +356,13 @@ fn draw_multiline_chart(
             context.fill();
         }
 
-        // Draw inflection points and collect positions
-        for (i, datapoint) in data.iter().enumerate() {
+        for (i, datapoint) in points.iter().enumerate() {
             let x = axis_padding + i as f64 * point_spacing;
             let y = height
                 - axis_padding
                 - (datapoint.y as f64 / max_value) * (height - axis_padding * 2.0);
 
-            if props.config.show_inflection_points {
+            if config.show_inflection_points {
                 context.set_fill_style_str(series.color.as_str());
                 context.begin_path();
                 let _ = context.arc(x, y, 3.0, 0.0, std::f64::consts::PI * 2.0);
@@ -364,19 +372,19 @@ fn draw_multiline_chart(
             point_positions.push(PointPos {
                 x,
                 y,
-                label: props.x.get(i).cloned().unwrap_or_default(),
+                label: x_labels.get(i).cloned().unwrap_or_default(),
                 value: datapoint.y,
                 series_name: series.name.clone(),
+                series_color: series.color.clone(),
             });
         }
     }
 
-    // Draw x-axis labels
-    if props.config.show_x_axis_labels {
+    if config.show_x_axis_labels {
         context.set_fill_style_str("black");
         context.set_text_align("right");
         context.set_text_baseline("middle");
-        for (i, x_label) in props.x.iter().enumerate() {
+        for (i, x_label) in x_labels.iter().enumerate() {
             let x = axis_padding + i as f64 * point_spacing;
             let y = height - axis_padding / 2.0;
             context.save();
@@ -387,29 +395,23 @@ fn draw_multiline_chart(
         }
     }
 
-    // Draw x-axis title
-    if !props.config.x_axis_title.is_empty() {
+    if !config.x_axis_title.is_empty() {
         context.set_text_align("center");
         context.set_font("bold 12px Arial");
         let _ = context.fill_text(
-            &props.config.x_axis_title,
+            &config.x_axis_title,
             width / 2.0,
             height - axis_padding / 4.0,
         );
     }
 
-    // Draw y-axis title
-    if !props.config.y_axis_title.is_empty() {
+    if !config.y_axis_title.is_empty() {
         context.set_text_align("center");
         context.set_text_baseline("middle");
         context.set_font("bold 12px Arial");
         context.save();
         let _ = context.rotate(-std::f64::consts::PI / 2.0);
-        let _ = context.fill_text(
-            &props.config.y_axis_title,
-            -(height / 2.0),
-            axis_padding / 4.0,
-        );
+        let _ = context.fill_text(&config.y_axis_title, -(height / 2.0), axis_padding / 4.0);
         context.restore();
     }
 
@@ -438,42 +440,35 @@ mod tests {
         let Some(context) = mock_context() else {
             return;
         };
-        let width = 800.0;
-        let height = 600.0;
 
-        let props = LineCurveChartProps {
-            data: vec![
-                (
-                    Series::new("Dataset 1", "#ff0000"),
-                    vec![
-                        DataPoint::new(10),
-                        DataPoint::new(20),
-                        DataPoint::new(15),
-                        DataPoint::new(40),
-                        DataPoint::new(30),
-                    ],
-                ),
-                (
-                    Series::new("Dataset 2", "#00ff00"),
-                    vec![
-                        DataPoint::new(50),
-                        DataPoint::new(40),
-                        DataPoint::new(30),
-                        DataPoint::new(35),
-                        DataPoint::new(20),
-                    ],
-                ),
-            ],
-            x: vec!["0", "1", "2", "3", "4"]
-                .into_iter()
-                .map(|s| s.to_string())
-                .collect(),
-            config: LineCurveChartConfig {
-                show_area_chart: true,
-                ..Default::default()
-            },
-        };
+        let data = vec![
+            (
+                Series::new("Revenue", "#4f46e5"),
+                vec![
+                    DataPoint::new(120),
+                    DataPoint::new(85),
+                    DataPoint::new(200),
+                    DataPoint::new(150),
+                ],
+            ),
+            (
+                Series::new("Expenses", "#e11d48"),
+                vec![
+                    DataPoint::new(80),
+                    DataPoint::new(90),
+                    DataPoint::new(110),
+                    DataPoint::new(95),
+                ],
+            ),
+        ];
+        let x_labels = vec![
+            "Jan".to_string(),
+            "Feb".to_string(),
+            "Mar".to_string(),
+            "Apr".to_string(),
+        ];
+        let config = LineCurveChartConfig::default();
 
-        draw_multiline_chart(&context, width, height, &props);
+        draw_multiline_chart(&context, 800.0, 480.0, &data, &x_labels, &config);
     }
 }

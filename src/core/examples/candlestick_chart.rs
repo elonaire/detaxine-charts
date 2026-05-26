@@ -1,5 +1,8 @@
-use detaxine_charts::charts::candlestick_chart::candlestick_chart::{
-    Candle, CandlestickChart, CandlestickChartConfig,
+use detaxine_charts::{
+    charts::candlestick_chart::candlestick_chart::{
+        Candle, CandlestickChart, CandlestickChartConfig,
+    },
+    use_chart_data,
 };
 use leptos::prelude::*;
 
@@ -7,7 +10,7 @@ fn main() {
     mount_to_body(|| {
         view! {
             <CandlestickChart
-                data=vec![
+                data=use_chart_data(vec![
                     // Week 1 - Accumulation phase
                                         Candle::new("Mar 1",  172.30, 174.50, 170.80, 173.20),
                                         Candle::new("Mar 2",  173.20, 176.80, 172.50, 176.10),
@@ -40,7 +43,7 @@ fn main() {
                                         Candle::new("Mar 29", 176.00, 178.30, 173.50, 174.20),
                                         Candle::new("Mar 30", 174.20, 175.80, 170.90, 171.50),
                                         Candle::new("Mar 31", 171.50, 174.60, 170.20, 173.80),
-                ]
+                ]).signal()
                 config=CandlestickChartConfig {
                     bullish_color: "#16a34a".to_string(),
                     bearish_color: "#e11d48".to_string(),

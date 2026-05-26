@@ -59,6 +59,7 @@
 //! ### [`BarChart`]
 //!
 //! ```rust
+//! use leptos::prelude::*;
 //! use detaxine_charts::bar_chart::{BarChart, BarChartConfig, DataPoint};
 //!
 //! #[component]
@@ -80,6 +81,7 @@
 //! ### [`PieChart`]
 //!
 //! ```rust
+//! use leptos::prelude::*;
 //! use detaxine_charts::pie_chart::{PieChart, PieChartConfig, DataPoint};
 //!
 //! #[component]
@@ -101,6 +103,7 @@
 //! ### [`DoughnutChart`]
 //!
 //! ```rust
+//! use leptos::prelude::*;
 //! use detaxine_charts::doughnut_chart::{DoughnutChart, DoughnutChartConfig};
 //!
 //! #[component]
@@ -122,6 +125,7 @@
 //! ### [`LineCurveChart`]
 //!
 //! ```rust
+//! use leptos::prelude::*;
 //! use detaxine_charts::line_chart::{LineCurveChart, LineCurveChartConfig, DataPoint, Series};
 //!
 //! #[component]
@@ -166,6 +170,7 @@
 //! ### [`CandlestickChart`]
 //!
 //! ```rust
+//! use leptos::prelude::*;
 //! use detaxine_charts::candlestick_chart::{CandlestickChart, CandlestickChartConfig, Candle};
 //!
 //! #[component]
@@ -205,18 +210,17 @@
 //!   detection on hover.
 
 pub mod charts;
+pub mod utils;
+
+pub use utils::hooks::use_chart_data::use_chart_data;
 
 #[cfg(feature = "BarChart")]
-pub use charts::bar_chart::bar_chart::{BarChart, BarChartConfig, DataPoint as BarDataPoint};
+pub use charts::bar_chart::bar_chart;
 #[cfg(feature = "CandlestickChart")]
-pub use charts::candlestick_chart::candlestick_chart::{
-    Candle, CandlestickChart, CandlestickChartConfig,
-};
+pub use charts::candlestick_chart::candlestick_chart;
 #[cfg(feature = "DoughnutChart")]
-pub use charts::doughnut_chart::doughnut_chart::{DoughnutChart, DoughnutChartConfig};
+pub use charts::doughnut_chart::doughnut_chart;
 #[cfg(feature = "LineCurveChart")]
-pub use charts::line_chart::line_chart::{
-    DataPoint as LineDataPoint, LineCurveChart, LineCurveChartConfig, Series,
-};
+pub use charts::line_chart::line_chart;
 #[cfg(feature = "PieChart")]
-pub use charts::pie_chart::pie_chart::{DataPoint as PieDataPoint, PieChart, PieChartConfig};
+pub use charts::pie_chart::pie_chart;

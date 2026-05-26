@@ -41,58 +41,26 @@ fn get_context(canvas: &HtmlCanvasElement) -> Option<CanvasRenderingContext2d> {
 
 #[component]
 pub fn DoughnutChart(
-    data: Vec<(String, i32, String)>,
+    /// Reactive signal — update data and the chart redraws automatically.
+    /// Each tuple is (label, value, color).
+    data: Signal<Vec<(String, i32, String)>>,
     #[prop(optional, default = Default::default())] config: DoughnutChartConfig,
 ) -> impl IntoView {
     let canvas_ref = NodeRef::<Canvas>::new();
     let tooltip_ref = NodeRef::<Div>::new();
     let segment_positions = StoredValue::new(Vec::<SegmentPos>::new());
-    let show_legend = config.show_legend;
-    let legend_meta = StoredValue::new(
-        data.iter()
+    let config = StoredValue::new(config);
+
+    let legend_meta = Memo::new(move |_| {
+        data.get()
+            .iter()
             .map(|(label, _, color)| (label.clone(), color.clone()))
-            .collect::<Vec<_>>(),
-    );
+            .collect::<Vec<_>>()
+    });
 
-    let data = data.clone();
-    let config = config.clone();
+    let show_legend = move || config.get_value().show_legend;
 
-    let draw = StoredValue::new(
-        move |canvas: &HtmlCanvasElement, context: &CanvasRenderingContext2d| {
-            let canvas = canvas.clone();
-            let context = context.clone();
-            let data = data.clone();
-            let config = config.clone();
-            move || {
-                let Some(win) = window() else { return };
-                let device_pixel_ratio = win.device_pixel_ratio();
-                let Some(parent) = canvas.parent_element() else {
-                    return;
-                };
-                let width = parent.client_width() as f64;
-                let height = width * 0.8;
-
-                canvas.set_width((width * device_pixel_ratio) as u32);
-                canvas.set_height((height * device_pixel_ratio) as u32);
-
-                if context.reset_transform().is_err() {
-                    return;
-                };
-                if context
-                    .scale(device_pixel_ratio, device_pixel_ratio)
-                    .is_err()
-                {
-                    return;
-                };
-
-                let props = DoughnutChartProps { data, config };
-                let segments = draw_doughnut_chart(&context, width, height, &props);
-                segment_positions.set_value(segments);
-            }
-        },
-    );
-
-    Effect::new(move |_| {
+    let redraw = move || {
         let Some(canvas) = canvas_ref.get() else {
             return;
         };
@@ -100,23 +68,42 @@ pub fn DoughnutChart(
         let Some(context) = get_context(&canvas) else {
             return;
         };
+        let Some(win) = window() else { return };
 
-        draw.get_value()(&canvas, &context)();
+        let device_pixel_ratio = win.device_pixel_ratio();
+        let Some(parent) = canvas.parent_element() else {
+            return;
+        };
+        let width = parent.client_width() as f64;
+        let height = width * 0.8;
+
+        canvas.set_width((width * device_pixel_ratio) as u32);
+        canvas.set_height((height * device_pixel_ratio) as u32);
+
+        if context.reset_transform().is_err() {
+            return;
+        };
+        if context
+            .scale(device_pixel_ratio, device_pixel_ratio)
+            .is_err()
+        {
+            return;
+        };
+
+        let segments = draw_doughnut_chart(&context, width, height, &data.get_untracked());
+        segment_positions.set_value(segments);
+    };
+
+    Effect::new(move |_| {
+        let _ = data.get(); // tracked
+        redraw();
     });
 
     let resize_listener = window_event_listener(ev::resize, move |_| {
-        let Some(canvas) = canvas_ref.get() else {
-            return;
-        };
-        let canvas: HtmlCanvasElement = canvas.into();
-        let Some(context) = get_context(&canvas) else {
-            return;
-        };
-
-        draw.get_value()(&canvas, &context)();
+        redraw();
     });
 
-    let mousemove_listener = window_event_listener(ev::mousemove, move |e| {
+    let canvas_mousemove_handler = move |e: ev::MouseEvent| {
         let Some(canvas) = canvas_ref.get() else {
             return;
         };
@@ -144,7 +131,7 @@ pub fn DoughnutChart(
 
             if dist < inner_radius || dist > s.radius {
                 return false;
-            }
+            };
 
             let mut angle = dy.atan2(dx);
             if angle < -PI / 2.0 {
@@ -164,18 +151,17 @@ pub fn DoughnutChart(
         } else {
             let _ = style.set_property("display", "none");
         }
-    });
+    };
 
     on_cleanup(move || {
         resize_listener.remove();
-        mousemove_listener.remove();
     });
 
     view! {
         <div style="width: 100%;">
-            {move || show_legend.then(|| view! {
+            {move || show_legend().then(|| view! {
                 <div style="display: flex; flex-direction: row; gap: 5px; flex-wrap: wrap; margin-bottom: 4px;">
-                    {legend_meta.get_value().into_iter().map(|(label, color)| view! {
+                    {legend_meta.get().into_iter().map(|(label, color)| view! {
                         <div style="display: flex; flex-direction: row; align-items: center; gap: 2px;">
                             <span style="font-size: 10px;">{label}</span>
                             <div style=format!("background-color: {}; width: 10px; height: 10px; display: inline-block;", color)></div>
@@ -184,7 +170,11 @@ pub fn DoughnutChart(
                 </div>
             })}
             <div style="position: relative;">
-                <canvas node_ref=canvas_ref style="width: 100%; height: 100%;"></canvas>
+                <canvas
+                    node_ref=canvas_ref
+                    style="width: 100%; height: 100%;"
+                    on:mousemove=canvas_mousemove_handler
+                ></canvas>
                 <div
                     node_ref=tooltip_ref
                     style="
@@ -207,15 +197,14 @@ fn draw_doughnut_chart(
     context: &CanvasRenderingContext2d,
     width: f64,
     height: f64,
-    props: &DoughnutChartProps,
+    data: &[(String, i32, String)],
 ) -> Vec<SegmentPos> {
     let center_x = width / 2.0;
     let center_y = height / 2.0;
-    let radius = (width.min(height) / 2.0).min(150.0);
+    let radius = (width.min(height) / 2.0) * 0.85;
     let inner_radius = radius * 0.5;
 
-    let segments = &props.data;
-    let total: f64 = segments.iter().map(|(_, value, _)| *value as f64).sum();
+    let total: f64 = data.iter().map(|(_, value, _)| *value as f64).sum();
     if total == 0.0 {
         return vec![];
     };
@@ -225,11 +214,11 @@ fn draw_doughnut_chart(
     let mut start_angle = -PI / 2.0;
     let mut segment_positions = Vec::new();
 
-    for (label, value, color) in segments {
+    for (label, value, color) in data {
         let sweep_angle = (*value as f64 / total) * 2.0 * PI;
         let end_angle = start_angle + sweep_angle;
 
-        // Fill segment
+        // fill segment
         context.begin_path();
         context.set_fill_style_str(color.as_str());
         context.move_to(center_x, center_y);
@@ -238,7 +227,7 @@ fn draw_doughnut_chart(
         context.fill();
         context.close_path();
 
-        // Outline segment
+        // outline segment
         context.begin_path();
         context.set_stroke_style_str("white");
         context.set_line_width(2.0);
@@ -248,7 +237,7 @@ fn draw_doughnut_chart(
         context.stroke();
         context.close_path();
 
-        // Cut inner hole
+        // cut inner hole
         context.begin_path();
         let _ = context.set_global_composite_operation("destination-out");
         let _ = context.arc(center_x, center_y, inner_radius, 0.0, 2.0 * PI);
@@ -296,15 +285,12 @@ mod tests {
             return;
         };
 
-        let props = DoughnutChartProps {
-            data: vec![
-                ("A".to_string(), 10, "#ff0000".to_string()),
-                ("B".to_string(), 20, "#00ff00".to_string()),
-                ("C".to_string(), 30, "#0000ff".to_string()),
-            ],
-            config: DoughnutChartConfig { show_legend: true },
-        };
+        let data = vec![
+            ("A".to_string(), 10, "#ff0000".to_string()),
+            ("B".to_string(), 20, "#00ff00".to_string()),
+            ("C".to_string(), 30, "#0000ff".to_string()),
+        ];
 
-        draw_doughnut_chart(&context, 500.0, 500.0, &props);
+        draw_doughnut_chart(&context, 500.0, 500.0, &data);
     }
 }
