@@ -4,11 +4,11 @@ version = "0.8.19"
 edition = "2024"
 description = "A data visualization library for Leptos"
 license = "MIT OR Apache-2.0"
-license-file = "LICENSE-APACHE" # required for crates.io
+license-file = "../../LICENSE-APACHE"
 repository = "https://github.com/elonaire/detaxine-charts"
 homepage = "https://github.com/you/my-charts"
 documentation = "https://docs.rs/detaxine-charts"
-readme = "README.md"
+readme = "../../README.md"
 keywords = [
     "leptos",
     "charts",
