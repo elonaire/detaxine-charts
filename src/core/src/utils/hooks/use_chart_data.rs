@@ -126,9 +126,11 @@ impl<T: Clone + Send + Sync + 'static> ChartData<T> {
 ///         Candle::new("09:02", 176.10, 177.30, 173.40, 174.00),
 ///     ]);
 ///
+///     let candles_signal = candles.signal();
+///
 ///     let append_handle = set_interval_with_handle(
 ///         move || {
-///             let current_val = candles.get_untracked();
+///             let current_val = candles_signal.get_untracked().clone();
 ///             let last = current_val
 ///                 .last()
 ///                 .cloned()
@@ -153,7 +155,7 @@ impl<T: Clone + Send + Sync + 'static> ChartData<T> {
 ///
 ///     view! {
 ///         <CandlestickChart
-///             data=candles.signal()
+///             data=candles_signal
 ///             config=CandlestickChartConfig::default()
 ///         />
 ///     }
