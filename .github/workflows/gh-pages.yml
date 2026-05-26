@@ -1,0 +1,38 @@
+name: Detaxine Charts GitHub Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+          override: true
+          profile: minimal
+      - name: Install Trunk
+        uses: jetli/trunk-action@v0.5.1
+        with:
+          version: latest
+      - name: Build dashboard
+        working-directory: src/core
+        run: trunk build --example dashboard --release --public-url /detaxine-charts/
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: src/core/dist
