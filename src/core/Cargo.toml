@@ -9,14 +9,7 @@ repository = "https://github.com/elonaire/detaxine-charts"
 homepage = "https://github.com/you/my-charts"
 documentation = "https://docs.rs/detaxine-charts"
 readme = "../../README.md"
-keywords = [
-    "leptos",
-    "charts",
-    "wasm",
-    "visualization",
-    "data",
-    "visualisation",
-]
+keywords = ["leptos", "charts", "wasm", "visualization", "data"]
 categories = ["web-programming", "visualization"]
 
 [features]
