@@ -192,8 +192,8 @@ fn Dashboard() -> impl IntoView {
         ">
             // header
             <div style="grid-column: 1 / -1;">
-                <h1 style="margin: 0 0 4px 0; font-size: 22px; color: #111827;">"Trading Dashboard"</h1>
-                <p style="margin: 0; font-size: 13px; color: #6b7280;">"AAPL — March 2025"</p>
+                <h1 style="margin: 0 0 4px 0; font-size: 22px; color: #111827;">"Detaxine Charts"</h1>
+                <p style="margin: 0; font-size: 13px; color: #6b7280;">"Example Dashboard"</p>
             </div>
 
             // candlestick — full width
