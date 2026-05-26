@@ -92,79 +92,94 @@ impl<T: Clone + Send + Sync + 'static> ChartData<T> {
 ///
 /// # Example — static data
 /// ```rust
-/// use detaxine_charts::use_chart_data;
+/// use leptos::prelude::*;
+/// use detaxine_charts::{bar_chart::{BarChart, DataPoint}, use_chart_data};
 ///
-/// let data = use_chart_data(vec![
-///     DataPoint::new("Jan", 120),
-///     DataPoint::new("Feb", 85),
-/// ]);
+/// #[component]
+/// fn BarChartExample() -> impl IntoView {
+///     let data = use_chart_data(vec![
+///         DataPoint::new("Jan", 120),
+///         DataPoint::new("Feb", 85),
+///     ]);
 ///
-/// view! {
-///     <BarChart data=data.signal() />
+///     view! {
+///         <BarChart data=data.signal() />
+///     }
 /// }
 /// ```
 ///
 /// # Example — live candlestick feed
 /// ```rust
 /// use std::time::Duration;
-///
-/// use detaxine_charts::{
-///     charts::candlestick_chart::candlestick_chart::{
-///         Candle, CandlestickChart, CandlestickChartConfig,
-///     },
-///     use_chart_data,
-/// };
 /// use leptos::prelude::*;
 /// use web_sys::js_sys::Math;
+/// use detaxine_charts::{
+///     candlestick_chart::{Candle, CandlestickChart, CandlestickChartConfig},
+///     use_chart_data,
+/// };
 ///
-/// let candles = use_chart_data(vec![
-///     Candle::new("09:00", 172.30, 174.50, 170.80, 173.20),
-///     Candle::new("09:01", 173.20, 176.80, 172.50, 176.10),
-///     Candle::new("09:02", 176.10, 177.30, 173.40, 174.00),
-/// ]);
+/// #[component]
+/// fn LiveCandlestickExample() -> impl IntoView {
+///     let candles = use_chart_data(vec![
+///         Candle::new("09:00", 172.30, 174.50, 170.80, 173.20),
+///         Candle::new("09:01", 173.20, 176.80, 172.50, 176.10),
+///         Candle::new("09:02", 176.10, 177.30, 173.40, 174.00),
+///     ]);
 ///
-/// let candles_signal = candles.signal();
+///     let append_handle = set_interval_with_handle(
+///         move || {
+///             let current_val = candles.get_untracked();
+///             let last = current_val
+///                 .last()
+///                 .cloned()
+///                 .unwrap_or(Candle::new("", 100.0, 105.0, 95.0, 100.0));
+///             let open = last.close;
+///             let close = open + (Math::random() - 0.5) * 4.0;
+///             let high = open.max(close) + Math::random() * 2.0;
+///             let low = (open.min(close) - Math::random() * 2.0).max(1.0);
+///             let label = format!("09:{:02}", current_val.len());
 ///
-/// // simulate a new candle arriving every second
-/// let append_handle = set_interval_with_handle(
-///     move || {
-///         let current_val = candles_signal.get().clone();
-///         let last = current_val
-///             .last()
-///             .cloned()
-///             .unwrap_or(Candle::new("", 100.0, 105.0, 95.0, 100.0));
-///         let open = last.close;
-///         let close = open + (Math::random() - 0.5) * 4.0;
-///         let high = open.max(close) + Math::random() * 2.0;
-///         let low = (open.min(close) - Math::random() * 2.0).max(1.0);
-///         let label = format!("09:{:02}", current_val.len());
+///             candles.append(Candle::new(&label, open, high, low, close));
+///             candles.retain_last(500);
+///         },
+///         Duration::from_secs(1),
+///     );
 ///
-///         candles.append(Candle::new(&label, open, high, low, close));
-///         candles.retain_last(500); // rolling window
-///     },
-///     Duration::from_secs(1),
-/// );
+///     on_cleanup(move || {
+///         if let Ok(handle) = append_handle {
+///             handle.clear();
+///         }
+///     });
 ///
-/// on_cleanup(move || {
-///     if let Ok(handle) = append_handle {
-///         handle.clear();
+///     view! {
+///         <CandlestickChart
+///             data=candles.signal()
+///             config=CandlestickChartConfig::default()
+///         />
 ///     }
-/// });
-///
-/// view! {
-///     <CandlestickChart data=candles_signal.clone() />
 /// }
 /// ```
 ///
 /// # Example — resetting on user action
 /// ```rust
-/// use detaxine_charts::use_chart_data;
+/// use leptos::prelude::*;
+/// use detaxine_charts::{bar_chart::DataPoint, use_chart_data};
 ///
-/// let data = use_chart_data(vec![]);
+/// #[component]
+/// fn ResettableChart() -> impl IntoView {
+///     let data = use_chart_data(vec![
+///         DataPoint::new("Jan", 120),
+///         DataPoint::new("Feb", 85),
+///     ]);
 ///
-/// let on_load = move |_| {
-///     data.set(vec![]);
-/// };
+///     let on_reset = move |_| {
+///         data.set(vec![]);
+///     };
+///
+///     view! {
+///         <button on:click=on_reset>"Reset"</button>
+///     }
+/// }
 /// ```
 pub fn use_chart_data<T: Clone + Send + Sync + 'static>(initial: Vec<T>) -> ChartData<T> {
     ChartData {
