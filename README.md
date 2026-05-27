@@ -160,7 +160,7 @@ The dashboard includes:
 
 - **Canvas-based rendering** - all charts draw to an HTML5 `<canvas>` element via `web_sys`, giving full control over pixel output with no DOM overhead
 - **Device pixel ratio aware** - canvases are scaled by `window.devicePixelRatio` so charts are sharp on HiDPI and Retina displays
-- **Responsive** — each chart listens for `window.resize` and redraws to fit its parent container width automatically
+- **Responsive** - each chart listens for `window.resize` and redraws to fit its parent container width automatically
 - **HTML tooltip overlay** - tooltips are absolutely positioned `<div>` elements rather than canvas-drawn text, making them easy to style with CSS
 - **Geometry-driven hit testing** - after each draw, shape positions are stored and used for precise mouse hit detection on hover
 - **Fine-grained reactivity** - built on Leptos signals so only the chart whose data changes redraws, never the whole page
