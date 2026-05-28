@@ -10,7 +10,6 @@ on:
 
 permissions:
   checks: write
-  contents: write
   pull-requests: write
 
 env:
@@ -101,6 +100,11 @@ jobs:
 
   automerge:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
     needs: [tests, publish]
     if: |
       always() &&
