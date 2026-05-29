@@ -15,6 +15,8 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   SOURCE_CODE_PATH: "src/core/src/"
+  CARGO_TOML_PATH: "src/core/Cargo.toml"
+  README_PATH: "README.md"
 jobs:
   check_source_code_changes:
     runs-on: ubuntu-latest
@@ -47,14 +49,12 @@ jobs:
           echo "If you see here files that you have not modified, please update your branch with changes from main."
 
           # Check if the modified files include this path
-          if echo "${{ steps.file_changes.outputs.changed_files }}" | grep -q "${{ env.SOURCE_CODE_PATH }}"; then
-            # Set the output variable and exit the loop
+          if echo "${{ steps.file_changes.outputs.changed_files }}" | grep -qE "${{ env.SOURCE_CODE_PATH }}|${{ env.CARGO_TOML_PATH }}|${{ env.README_PATH }}"; then
             echo "triggering_path is ${{ env.SOURCE_CODE_PATH }}"
             echo "SHOULD_PUBLISH=true" >> "$GITHUB_OUTPUT"
             cat "$GITHUB_OUTPUT"
           else
             echo "SHOULD_PUBLISH=false" >> "$GITHUB_OUTPUT"
-
           fi
 
           exit 0
